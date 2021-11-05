@@ -24,8 +24,7 @@ spec:
           containers:
             - name: backup
               image: waggle/node-health-reporter
-              args:
-                - "-p /data"
+              args: ["-p", "/data"]
               envFrom:
                 - secretRef:
                     name: node-health-reporter-config
