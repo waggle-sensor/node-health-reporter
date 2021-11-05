@@ -3,19 +3,16 @@ import json
 import multiprocessing
 import subprocess
 from urllib.request import urlopen
-
+import os
 import pandas as pd
-
 
 def read_json_from_url(url):
     with urlopen(url) as f:
         return json.load(f)
 
 
-def get_node_info():
-    resp = read_json_from_url(
-        "https://sheets.googleapis.com/v4/spreadsheets/1ZuwMfmGvHgRLAaoJBlBNJ3MO7FuqmkV__4MFinNm8Fk/values/main!A2:E100?key=AIzaSyBVgp3EZvykQMdGbb595S8q5xuVc0WyO9E"
-    )
+def get_node_info_from_google_sheet(url):
+    resp = read_json_from_url(url)
     df = pd.DataFrame(resp["values"], columns=["node", "online", "shield", "nxagent", "kind"])
     df["node"] = df["node"].str.lower()
     df["online"] = df["online"].str.lower() == "online"
@@ -236,9 +233,10 @@ def main():
     parser.add_argument("--uploads", action="store_true", default=False, help="include uploads check")
     args = parser.parse_args()
 
-    # TODO get the headers from spreadsheet dynamically
+    GOOGLE_SHEET_URL = os.environ["GOOGLE_SHEET_URL"]
 
-    node_info = get_node_info()
+    # TODO get the headers from spreadsheet dynamically
+    node_info = get_node_info_from_google_sheet(GOOGLE_SHEET_URL)
     all_nodes = set(node_info.node)
     online_nodes = node_info[node_info.online].node
     offline_nodes = set(node_info[~node_info.online].node)

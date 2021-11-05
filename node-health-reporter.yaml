@@ -3,14 +3,14 @@ kind: PersistentVolumeClaim
 metadata:
   name: node-health-reporter-data
 spec:
-  storageClassName: local-path
   resources:
     requests:
       storage: 10Mi
   accessModes:
     - ReadWriteOnce
+  storageClassName: local-path
 ---
-apiVersion: batch/v1
+apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: node-health-reporter
@@ -26,23 +26,12 @@ spec:
               image: waggle/node-health-reporter
               args:
                 - "-p /data"
-                - "--slack-token=$(SLACK_TOKEN)"
-              env:
-                - name: SLACK_TOKEN
-                  valueFrom:
-                    secretKeyRef:
-                      name: node-health-reporter-token
-                      key: SLACK_TOKEN
-                # - name: SSH_USER
-                #   valueFrom:
-                #     configMapKeyRef:
-                #       name: mysql-backup-config
-                #       key: ssh-user
-
+              envFrom:
+                - secretRef:
+                    name: node-health-reporter-config
               volumeMounts:
-                - name: data
-                  mountPath: /data
-
+                - mountPath: /data
+                  name: data
           volumes:
             - name: data
               persistentVolumeClaim:

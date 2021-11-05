@@ -91,8 +91,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", default=".", help="path to store files")
     parser.add_argument("-c", "--checker", default="check_nodes.py", help="path to checker script")
-    parser.add_argument("--slack-token", default="", help="slack token for publishing results")
     args = parser.parse_args()
+
+    SLACK_TOKEN = os.environ["SLACK_TOKEN"]
 
     # run the checker and get the results saved to a file
     ts = int(time.time())
@@ -125,7 +126,7 @@ def main():
 
     if args.slack_token != "":
         print("- publishing to slack")
-        publish_results_to_slack(result_file, report_file, token=args.slack_token)
+        publish_results_to_slack(result_file, report_file, token=SLACK_TOKEN)
 
 
 if __name__ == "__main__":
