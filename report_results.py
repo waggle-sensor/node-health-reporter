@@ -123,10 +123,7 @@ def main():
         return
 
     print("- results differ from last report")
-
-    if args.slack_token != "":
-        print("- publishing to slack")
-        publish_results_to_slack(result_file, report_file, token=SLACK_TOKEN)
+    publish_results_to_slack(result_file, report_file, token=SLACK_TOKEN)
 
 
 if __name__ == "__main__":
