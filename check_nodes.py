@@ -1,6 +1,7 @@
 import argparse
 import json
 import multiprocessing
+from pathlib import Path
 import subprocess
 from urllib.request import urlopen
 import os
@@ -32,6 +33,8 @@ def query_data(query):
             "value": [],
             "meta.node": [],
             "meta.vsn": [],
+            "meta.job": [],
+            "meta.task": [],
         })
         meta = pd.json_normalize(df["meta"])
         meta.fillna("", inplace=True)
@@ -227,7 +230,7 @@ raingauge_names = {
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output", default=None, help="output csv")
+    parser.add_argument("-o", "--output", default=None, type=Path, help="output csv")
     parser.add_argument("--window", default="5m", help="time window to check")
     parser.add_argument("--ssh", action="store_true", default=False, help="include ssh check")
     parser.add_argument("--uploads", action="store_true", default=False, help="include uploads check")
@@ -378,6 +381,7 @@ def main():
         print()
 
     if args.output is not None:
+        args.output.parent.mkdir(exist_ok=True, parents=True)
         results.sort_values(["node", "msg"]).to_csv(args.output, index=False)
 
     print()

@@ -13,6 +13,7 @@ def publish_results_to_slack(result_file, save_file, token):
         olddf = pd.read_csv(filepath_or_buffer=save_file)
     else:
         olddf = pd.DataFrame(columns=["node", "msg"])
+
     newdf = pd.read_csv(filepath_or_buffer=result_file)
     mergedf = olddf.merge(newdf, how="outer", indicator="which", sort=True)
     fixeddf = mergedf[mergedf.which == "left_only"].drop(columns="which")
@@ -76,15 +77,22 @@ def publish_results_to_slack(result_file, save_file, token):
     )
 
     client = slack.WebClient(token=token)
+    print("posting report")
     client.chat_postMessage(
         channel="nodehealth",
         blocks=slack_blocks,
     )
-    client.files_upload(channels="nodehealth", file=result_file, title="results file")
+    print("posting file", result_file)
+    # NOTE slackclient only accepts string based paths
+    client.files_upload(channels="nodehealth", file=str(result_file), title="results file")
 
     if os.path.exists(save_file):
         os.remove(save_file)
     shutil.copyfile(result_file, save_file)
+
+
+def files_equal(p1: Path, p2: Path) -> bool:
+    return p1.exists() and p2.exists() and p1.read_bytes() == p2.read_bytes()
 
 
 def main():
@@ -113,12 +121,8 @@ def main():
 
     # compare the results to see if there are any diffs
     report_file = Path(args.path, "report.csv")
-    results = result_file.read_text()
-    
-    last_report = ""
-    if report_file.exists():
-        last_report = report_file.read_text()
-    if results == last_report:
+
+    if files_equal(result_file, report_file):
         print("- results do NOT differ from last report, silent")
         return
 
