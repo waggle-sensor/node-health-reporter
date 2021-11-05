@@ -122,6 +122,9 @@ def main():
     # compare the results to see if there are any diffs
     report_file = Path(args.path, "report.csv")
 
+    if report_file.exists():
+        print("- previous report file exists")
+
     if files_equal(result_file, report_file):
         print("- results do NOT differ from last report, silent")
         return
