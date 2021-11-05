@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: node-health-reporter-data
+spec:
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Mi
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: node-health-reporter
+spec:
+  schedule: "*/10 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: waggle/node-health-reporter
+              args:
+                - "-p /data"
+                - "--slack-token=$(SLACK_TOKEN)"
+              env:
+                - name: SLACK_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: node-health-reporter-token
+                      key: SLACK_TOKEN
+                # - name: SSH_USER
+                #   valueFrom:
+                #     configMapKeyRef:
+                #       name: mysql-backup-config
+                #       key: ssh-user
+
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: node-health-reporter-data
