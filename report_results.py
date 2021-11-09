@@ -91,12 +91,27 @@ def publish_results_to_slack(result_file, save_file, token):
     shutil.copyfile(result_file, save_file)
 
 
+def clean_up_old_files(args):
+    result_files = sorted(Path(args.path).glob("*-result.csv"))
+    delete_files = result_files[:-args.keep_last]
+
+    if len(delete_files) == 0:
+        print("- no files marked for deletion")
+        return
+
+    print("- deleting the following old files:")
+    for f in delete_files:
+        print(f)
+        f.unlink()
+
+
 def files_equal(p1: Path, p2: Path) -> bool:
     return p1.exists() and p2.exists() and p1.read_bytes() == p2.read_bytes()
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--keep-last", default=100, type=int, help="number of old files to keep")
     parser.add_argument("-p", "--path", default=".", help="path to store files")
     parser.add_argument("-c", "--checker", default="check_nodes.py", help="path to checker script")
     args = parser.parse_args()
@@ -134,6 +149,8 @@ def main():
 
     print("- results differ from last report")
     publish_results_to_slack(result_file, report_file, token=SLACK_TOKEN)
+
+    clean_up_old_files(args)
 
 
 if __name__ == "__main__":
