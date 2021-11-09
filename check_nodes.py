@@ -24,7 +24,7 @@ def get_node_info_from_google_sheet(url):
 
 def query_data(query):
     data = json.dumps(query).encode()
-    with urlopen("https://data-test.sagecontinuum.org/api/v1/query", data) as f:
+    with urlopen("https://data.sagecontinuum.org/api/v1/query", data) as f:
         df = pd.read_json(f, lines=True)
         if len(df) == 0:
             return pd.DataFrame({

@@ -114,10 +114,13 @@ def main():
         # "--ssh", # TODO provide ssh access
         "--uploads",
         "-o",
-        result_file,
+        str(result_file),
     ]
     print(f"- run checker: {cmd}")
     subprocess.check_output(cmd, timeout=120)
+
+    print("- results:")
+    print(result_file.read_text())
 
     # compare the results to see if there are any diffs
     report_file = Path(args.path, "report.csv")
