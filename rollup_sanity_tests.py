@@ -108,7 +108,7 @@ def main():
     vsns = {item["vsn"] for item in production_list if item["vsn"] != ""}
 
     results = []
-    results.extend(get_sanity_test_rollup_results(vsns, "-3d", "-1h"))
+    results.extend(get_sanity_test_rollup_results(vsns, "-4h", "-1h"))
     write_results_to_influxdb(results)
 
 

@@ -8,9 +8,6 @@ import sage_data_client
 import requests
 from typing import NamedTuple
 
-INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
-INFLUXDB_ORG = "waggle"
-INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
 
 sys_from_nxcore = {
     "sys.boot_time",
@@ -264,7 +261,7 @@ device_output_table = {
 #     return results
 
 
-def write_results_to_influxdb(records):
+def write_results_to_influxdb(url, token, org, records):
     data = []
 
     for r in records:
@@ -276,9 +273,9 @@ def write_results_to_influxdb(records):
         p = p.time(int(r["timestamp"].timestamp()), write_precision=WritePrecision.S)
         data.append(p)
     
-    with influxdb_client.InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG) as client, \
+    with influxdb_client.InfluxDBClient(url=url, token=token, org=org) as client, \
          client.write_api(write_options=WriteOptions(batch_size=10000)) as write_api:
-        write_api.write(bucket="health-check-test", org=INFLUXDB_ORG, record=data, write_precision=WritePrecision.S)
+        write_api.write(bucket="health-check-test", org=org, record=data, write_precision=WritePrecision.S)
 
 
 def check_publishing_frequency(df, freq, window):
@@ -301,14 +298,14 @@ def load_node_table():
 
 
 def load_node_table_item(item):
-    node_type = item["Node Type"].lower()
+    node_type = item["node_type"].lower()
     devices = set()
     if node_type == "wsn":
         devices.add("nxcore")
         devices.add("bme280")
     if node_type == "dell":
         devices.add("dell")
-    if item["2nd NX"] is True:
+    if item["nx_agent"] is True:
         devices.add("nxagent")
     if item["shield"] is True:
         devices.add("rpi")
@@ -321,7 +318,7 @@ def load_node_table_item(item):
     
     # add cameras
     for dir in ["top", "bottom", "left", "right"]:
-        if item[f"{dir} camera"] not in [None, "", "none"]:
+        if item[f"{dir}_camera"] not in [None, "", "none"]:
             devices.add(f"{dir}_camera")
 
     # TODO add camera stuff for upload checks
@@ -338,6 +335,10 @@ def time_windows(start, end, freq):
 
 
 def main():
+    INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
+    INFLUXDB_ORG = "waggle"
+    INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default="-2h", type=pd.Timedelta, help="relative start time")
     parser.add_argument("--end", default="-1h", type=pd.Timedelta, help="relative end time")
@@ -466,7 +467,11 @@ def main():
         logging.info("done!")
         
         logging.info("writing %s records...", len(records))
-        write_results_to_influxdb(records)
+        write_results_to_influxdb(
+            url=INFLUXDB_URL,
+            org=INFLUXDB_ORG,
+            token=INFLUXDB_TOKEN,
+            records=records)
         logging.info("done!")
 
 
