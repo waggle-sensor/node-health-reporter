@@ -4,6 +4,7 @@ import unittest
 
 class TestUtils(unittest.TestCase):
 
+    # integration test with node production table api
     def test_load_node_table(self):
         load_node_table()
 
