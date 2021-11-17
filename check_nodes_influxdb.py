@@ -334,14 +334,38 @@ def time_windows(start, end, freq):
     return zip(windows[:-1], windows[1:])
 
 
+def parse_time(s, now=None):
+    try:
+        return pd.to_datetime(s, utc=True)
+    except ValueError:
+        pass
+    if now is None:
+        now = pd.to_datetime("now", utc=True)
+    try:
+        return now + pd.to_timedelta(s)
+    except ValueError:
+        pass
+    raise ValueError("invalid time format")
+
+
+def get_rollup_range(start, end, now=None):
+    if now is None:
+        now = pd.to_datetime("now", utc=True)
+    return start.floor("1h"), end.floor("1h")
+
+
 def main():
     INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
     INFLUXDB_ORG = "waggle"
     INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
 
+    now = pd.to_datetime("now", utc=True)
+    def time_arg(s):
+        return parse_time(s, now=now)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", default="-2h", type=pd.Timedelta, help="relative start time")
-    parser.add_argument("--end", default="-1h", type=pd.Timedelta, help="relative end time")
+    parser.add_argument("--start", default="-2h", type=time_arg, help="relative start time")
+    parser.add_argument("--end", default="-1h", type=time_arg, help="relative end time")
     parser.add_argument("--window", default="1h", type=pd.Timedelta, help="window duration to aggreagate over")
     args = parser.parse_args()
 
@@ -352,12 +376,10 @@ def main():
 
     node_table = load_node_table()
 
-    # this can be split from sanity test rollup
-    now = pd.to_datetime("now", utc=True)
-    start = (now + pd.to_timedelta(args.start)).floor("1h")
-    end = (now + pd.to_timedelta(args.end)).floor("1h")
+    start, end = get_rollup_range(args.start, args.end)
+    window = args.window
 
-    window = pd.Timedelta("1h")
+    logging.info("current time is %s", now)
 
     for start, end in time_windows(start, end, window):
         logging.info("checking %s %s", start, end)
@@ -377,8 +399,6 @@ def main():
         # NOTE metrics agent doesn't add a task name, so we set task name
         # to system for system metrics.
         df.loc[df["name"].str.startswith("sys."), "meta.task"] = "sys"
-
-        results = []
 
         vsn_groups = df.groupby(["meta.vsn"])
 
