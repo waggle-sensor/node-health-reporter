@@ -1,3 +1,4 @@
+import argparse
 import sage_data_client
 import pandas as pd
 import influxdb_client
@@ -64,12 +65,19 @@ def get_sanity_test_rollup_results(vsns, start, end, now=None):
     }
 
     for (field, node, vsn, ts), total in table.unstack().iteritems():
+        try:
+            value = int(total)
+        except ValueError:
+            print("failed to convert value for", field, node, vsn, ts, "filling as 0")
+            value = 0
+            continue
+
         results.append({
             "timestamp": ts,
             "name": fieldnames[field],
             "vsn": vsn,
             "node": node,
-            "value": total,
+            "value": value,
         })
 
     return results
@@ -101,6 +109,11 @@ def write_results_to_influxdb(results):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start", default="-4h")
+    parser.add_argument("--end", default="-1h")
+    args = parser.parse_args()
+
     logging.basicConfig(level=logging.INFO)
 
     r = requests.get("https://api.sagecontinuum.org/production")
@@ -108,7 +121,7 @@ def main():
     vsns = {item["vsn"] for item in production_list if item["vsn"] != ""}
 
     results = []
-    results.extend(get_sanity_test_rollup_results(vsns, "-4h", "-1h"))
+    results.extend(get_sanity_test_rollup_results(vsns, args.start, args.end))
     write_results_to_influxdb(results)
 
 
