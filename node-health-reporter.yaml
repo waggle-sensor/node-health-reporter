@@ -18,6 +18,7 @@ spec:
   schedule: "*/10 * * * *"
   jobTemplate:
     spec:
+      startingDeadlineSeconds: 3600
       template:
         spec:
           restartPolicy: OnFailure
