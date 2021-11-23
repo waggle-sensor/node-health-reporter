@@ -16,9 +16,10 @@ metadata:
   name: node-health-reporter
 spec:
   schedule: "*/10 * * * *"
+  startingDeadlineSeconds: 3600
   jobTemplate:
     spec:
-      startingDeadlineSeconds: 3600
+      activeDeadlineSeconds: 300
       template:
         spec:
           restartPolicy: OnFailure
