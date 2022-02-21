@@ -16,11 +16,14 @@ def read_json_from_url(url):
 
 def get_node_info_from_google_sheet(url):
     resp = read_json_from_url(url)
-    df = pd.DataFrame(resp["values"], columns=["node", "online", "shield", "nxagent", "kind"])
-    df["node"] = df["node"].str.lower()
-    df["online"] = df["online"].str.lower() == "online"
+    df = pd.DataFrame(
+        resp["values"],
+        columns=["vsn", "node_type", "node_id", "shield", "nx_agent", "expected_online"],
+    )
+    df["node"] = df["node_id"].str.lower()
+    df["online"] = df["expected_online"].str.lower() == "yes"
     df["shield"] = df["shield"].str.lower() == "yes"
-    df["nxagent"] = df["nxagent"].str.lower() == "yes"
+    df["nxagent"] = df["nx_agent"].str.lower() == "yes"
     return df
 
 
@@ -256,8 +259,8 @@ def main():
     offline_nodes = set(node_info[~node_info.online].node)
     expected_nodes_with_rpi = set(online_nodes[node_info.shield])
     expected_nodes_with_agent = set(online_nodes[node_info.nxagent])
-    wsn_nodes = set(online_nodes[node_info.kind == "wsn"])
-    blade_nodes = set(online_nodes[node_info.kind == "blade"])
+    wsn_nodes = set(online_nodes[node_info.node_type.lower() == "wsn"])
+    blade_nodes = set(online_nodes[node_info.node_type.lower() == "blade"])
 
     if args.ssh:
         with multiprocessing.Pool(8) as pool:
