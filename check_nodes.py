@@ -241,7 +241,7 @@ def main():
     nodes_checked = set()
 
     for node, df_node in df.groupby("meta.node"):
-        vsn = vsn_for_node[node]
+        vsn = vsn_for_node.get(node, "???")
         nodes_checked.add(node)
 
         # check for multiple vsns. should never happen!
