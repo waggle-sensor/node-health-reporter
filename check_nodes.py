@@ -229,7 +229,10 @@ def main():
 
     results = []
 
-    df = sage_data_client.query(start=f"-{args.window}", tail=1)
+    df = sage_data_client.query(
+        start=f"-{args.window}",
+        tail=1,
+    )
 
     df.loc[df["meta.vsn"] == "", "meta.vsn"] = "W000"
 
@@ -317,8 +320,8 @@ def main():
             start="-2h",
             tail=1,
             filter={
-                "name": "upload"
-            }
+                "name": "upload",
+            },
         )
 
         # get set of all unique (node, task)
