@@ -13,7 +13,7 @@ def read_json_from_url(url):
         return json.load(f)
 
 
-def get_node_info_from_google_sheet(url="https://api.sagecontinuum.org/monitoring"):
+def get_monitoring_info_from_url(url):
     df = pd.read_json(url)
     df["node_id"] = df["node_id"].str.lower()
     df["vsn"] = df["vsn"].str.upper()
@@ -214,7 +214,7 @@ def main():
     args = parser.parse_args()
 
     # TODO get the headers from spreadsheet dynamically
-    node_info = get_node_info_from_google_sheet()
+    node_info = get_monitoring_info_from_url(os.environ["MONITORING_INFO_URL"])
     all_nodes = set(node_info.node_id)
     online_nodes = node_info[node_info.expected_online].node_id
     offline_nodes = set(node_info[~node_info.expected_online].node_id)
