@@ -6,42 +6,19 @@ import subprocess
 from urllib.request import urlopen
 import os
 import pandas as pd
+import sage_data_client
 
 def read_json_from_url(url):
     with urlopen(url) as f:
         return json.load(f)
 
 
-def get_node_info_from_google_sheet(url):
-    resp = read_json_from_url(url)
-    df = pd.DataFrame(resp["values"], columns=["node", "online", "shield", "nxagent", "kind"])
-    df["node"] = df["node"].str.lower()
-    df["online"] = df["online"].str.lower() == "online"
-    df["shield"] = df["shield"].str.lower() == "yes"
-    df["nxagent"] = df["nxagent"].str.lower() == "yes"
+def get_monitoring_info_from_url(url):
+    df = pd.read_json(url)
+    df["node_id"] = df["node_id"].str.lower()
+    df["vsn"] = df["vsn"].str.upper()
+    df["node_type"] = df["node_type"].str.lower()
     return df
-
-
-def query_data(query):
-    data = json.dumps(query).encode()
-    with urlopen("https://data.sagecontinuum.org/api/v1/query", data) as f:
-        df = pd.read_json(f, lines=True)
-        if len(df) == 0:
-            return pd.DataFrame({
-            "timestamp": [],
-            "name": [],
-            "value": [],
-            "meta.node": [],
-            "meta.vsn": [],
-            "meta.job": [],
-            "meta.task": [],
-        })
-        meta = pd.json_normalize(df["meta"])
-        meta.fillna("", inplace=True)
-        meta.rename({c: "meta." + c for c in meta.columns}, axis="columns", inplace=True)
-        df = df.join(meta)
-        df.drop(columns=["meta"], inplace=True)
-        return df
 
 
 def check_ssh(node):
@@ -221,7 +198,7 @@ bme_names = {
 }
 
 raingauge_names = {
-    "env.raingauge.acc",
+    # "env.raingauge.acc", # we decided this measurement didn't make sense and that user's should use total_acc
     "env.raingauge.event_acc",
     "env.raingauge.rint",
     "env.raingauge.total_acc",
@@ -236,17 +213,15 @@ def main():
     parser.add_argument("--uploads", action="store_true", default=False, help="include uploads check")
     args = parser.parse_args()
 
-    GOOGLE_SHEET_URL = os.environ["GOOGLE_SHEET_URL"]
-
     # TODO get the headers from spreadsheet dynamically
-    node_info = get_node_info_from_google_sheet(GOOGLE_SHEET_URL)
-    all_nodes = set(node_info.node)
-    online_nodes = node_info[node_info.online].node
-    offline_nodes = set(node_info[~node_info.online].node)
+    node_info = get_monitoring_info_from_url(os.environ["MONITORING_INFO_URL"])
+    all_nodes = set(node_info.node_id)
+    online_nodes = node_info[node_info.expected_online].node_id
+    offline_nodes = set(node_info[~node_info.expected_online].node_id)
     expected_nodes_with_rpi = set(online_nodes[node_info.shield])
-    expected_nodes_with_agent = set(online_nodes[node_info.nxagent])
-    wsn_nodes = set(online_nodes[node_info.kind == "wsn"])
-    blade_nodes = set(online_nodes[node_info.kind == "blade"])
+    expected_nodes_with_agent = set(online_nodes[node_info.nx_agent])
+    wsn_nodes = set(online_nodes[node_info.node_type == "wsn"])
+    blade_nodes = set(online_nodes[node_info.node_type == "blade"])
 
     if args.ssh:
         with multiprocessing.Pool(8) as pool:
@@ -254,11 +229,9 @@ def main():
 
     results = []
 
-    df = query_data(
-        {
-            "start": f"-{args.window}",
-            "tail": 1,
-        }
+    df = sage_data_client.query(
+        start=f"-{args.window}",
+        tail=1,
     )
 
     df.loc[df["meta.vsn"] == "", "meta.vsn"] = "W000"
@@ -343,14 +316,12 @@ def main():
 
     if args.uploads:
         # this is purely a test based on whether and upload exists in last 2h. we can make this more dynamic, if needed.
-        df_uploads = query_data(
-            {
-                "start": "-2h",
-                "tail": 1,
-                "filter": {
-                    "name": "upload"
-                }
-            }
+        df_uploads = sage_data_client.query(
+            start="-2h",
+            tail=1,
+            filter={
+                "name": "upload",
+            },
         )
 
         # get set of all unique (node, task)
