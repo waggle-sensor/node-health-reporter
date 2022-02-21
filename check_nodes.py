@@ -6,6 +6,7 @@ import subprocess
 from urllib.request import urlopen
 import os
 import pandas as pd
+import sage_data_client
 
 def read_json_from_url(url):
     with urlopen(url) as f:
@@ -18,28 +19,6 @@ def get_node_info_from_google_sheet(url="https://api.sagecontinuum.org/monitorin
     df["vsn"] = df["vsn"].str.upper()
     df["node_type"] = df["node_type"].str.lower()
     return df
-
-
-def query_data(query):
-    data = json.dumps(query).encode()
-    with urlopen("https://data.sagecontinuum.org/api/v1/query", data) as f:
-        df = pd.read_json(f, lines=True)
-        if len(df) == 0:
-            return pd.DataFrame({
-            "timestamp": [],
-            "name": [],
-            "value": [],
-            "meta.node": [],
-            "meta.vsn": [],
-            "meta.job": [],
-            "meta.task": [],
-        })
-        meta = pd.json_normalize(df["meta"])
-        meta.fillna("", inplace=True)
-        meta.rename({c: "meta." + c for c in meta.columns}, axis="columns", inplace=True)
-        df = df.join(meta)
-        df.drop(columns=["meta"], inplace=True)
-        return df
 
 
 def check_ssh(node):
@@ -250,12 +229,7 @@ def main():
 
     results = []
 
-    df = query_data(
-        {
-            "start": f"-{args.window}",
-            "tail": 1,
-        }
-    )
+    df = sage_data_client.query(start=f"-{args.window}", tail=1)
 
     df.loc[df["meta.vsn"] == "", "meta.vsn"] = "W000"
 
@@ -339,13 +313,11 @@ def main():
 
     if args.uploads:
         # this is purely a test based on whether and upload exists in last 2h. we can make this more dynamic, if needed.
-        df_uploads = query_data(
-            {
-                "start": "-2h",
-                "tail": 1,
-                "filter": {
-                    "name": "upload"
-                }
+        df_uploads = sage_data_client.query(
+            start="-2h",
+            tail=1,
+            filter={
+                "name": "upload"
             }
         )
 
