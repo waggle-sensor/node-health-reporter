@@ -1,2 +1,2 @@
-pandas
+sage-data-client==0.4.*
 slackclient
