@@ -223,6 +223,8 @@ def main():
     wsn_nodes = set(online_nodes[node_info.node_type == "wsn"])
     blade_nodes = set(online_nodes[node_info.node_type == "blade"])
 
+    vsn_for_node = {r.node_id: r.vsn for r in node_info.itertuples()}
+
     if args.ssh:
         with multiprocessing.Pool(8) as pool:
             ssh_status = dict(pool.map(check_ssh, online_nodes))
@@ -234,18 +236,18 @@ def main():
         tail=1,
     )
 
-    df.loc[df["meta.vsn"] == "", "meta.vsn"] = "W000"
-
     total_unexpected = 0
 
     nodes_checked = set()
 
-    for (node, vsn), df_node in df.groupby(["meta.node", "meta.vsn"]):
+    for node, df_node in df.groupby("meta.node"):
+        vsn = vsn_for_node[node]
         nodes_checked.add(node)
 
-        if vsn == "W000":
-            results.append({"node": node, "vsn": vsn, "msg": "!!! using invalid vsn"})
-            continue
+        # check for multiple vsns. should never happen!
+        vsns = sorted(set(df_node["meta.vsn"]))
+        if vsns != [vsn]:
+            results.append({"node": node, "vsn": vsn, "msg": f"!!! tagged with multiple vsns: {vsns}"})
 
         # check if an unlisted node is sending data (query *could* return more nodes than in manifest)
         if node not in all_nodes:
@@ -311,8 +313,9 @@ def main():
     # ensure all online nodes are accounted for
     missing_nodes = set(online_nodes) - nodes_checked
     for node in missing_nodes:
+        vsn = vsn_for_node.get(node, "???")
         # NOTE no vsn in data to match with
-        results.append({"node": node, "vsn": node, "msg": f"!!! no data"})
+        results.append({"node": node, "vsn": vsn, "msg": f"!!! no data"})
 
     if args.uploads:
         # this is purely a test based on whether and upload exists in last 2h. we can make this more dynamic, if needed.
