@@ -1,11 +1,13 @@
 import argparse
 import json
 import multiprocessing
-from pathlib import Path
-import subprocess
-from urllib.request import urlopen
 import os
+import subprocess
+from pathlib import Path
+from urllib.request import urlopen
+
 import pandas as pd
+
 
 def read_json_from_url(url):
     with urlopen(url) as f:
@@ -27,15 +29,17 @@ def query_data(query):
     with urlopen("https://data.sagecontinuum.org/api/v1/query", data) as f:
         df = pd.read_json(f, lines=True)
         if len(df) == 0:
-            return pd.DataFrame({
-            "timestamp": [],
-            "name": [],
-            "value": [],
-            "meta.node": [],
-            "meta.vsn": [],
-            "meta.job": [],
-            "meta.task": [],
-        })
+            return pd.DataFrame(
+                {
+                    "timestamp": [],
+                    "name": [],
+                    "value": [],
+                    "meta.node": [],
+                    "meta.vsn": [],
+                    "meta.job": [],
+                    "meta.task": [],
+                }
+            )
         meta = pd.json_normalize(df["meta"])
         meta.fillna("", inplace=True)
         meta.rename({c: "meta." + c for c in meta.columns}, axis="columns", inplace=True)
@@ -60,8 +64,13 @@ def read_json_from_url(url):
 
 
 def get_expected_plugins():
-    resources_by_node = read_json_from_url("https://portal.sagecontinuum.org/ses-plugin-data/latest-status.json")
-    return {node.lower(): {r["meta"]["deployment"] or "" for r in resources} for node, resources in resources_by_node.items()}
+    resources_by_node = read_json_from_url(
+        "https://portal.sagecontinuum.org/ses-plugin-data/latest-status.json"
+    )
+    return {
+        node.lower(): {r["meta"]["deployment"] or "" for r in resources}
+        for node, resources in resources_by_node.items()
+    }
 
 
 sys_from_nx = {
@@ -233,7 +242,9 @@ def main():
     parser.add_argument("-o", "--output", default=None, type=Path, help="output csv")
     parser.add_argument("--window", default="5m", help="time window to check")
     parser.add_argument("--ssh", action="store_true", default=False, help="include ssh check")
-    parser.add_argument("--uploads", action="store_true", default=False, help="include uploads check")
+    parser.add_argument(
+        "--uploads", action="store_true", default=False, help="include uploads check"
+    )
     args = parser.parse_args()
 
     GOOGLE_SHEET_URL = os.environ["GOOGLE_SHEET_URL"]
@@ -343,15 +354,7 @@ def main():
 
     if args.uploads:
         # this is purely a test based on whether and upload exists in last 2h. we can make this more dynamic, if needed.
-        df_uploads = query_data(
-            {
-                "start": "-2h",
-                "tail": 1,
-                "filter": {
-                    "name": "upload"
-                }
-            }
-        )
+        df_uploads = query_data({"start": "-2h", "tail": 1, "filter": {"name": "upload"}})
 
         # get set of all unique (node, task)
         uploads = set(df_uploads.groupby(["meta.node", "meta.task"]).groups.keys())
@@ -370,7 +373,13 @@ def main():
                 if not "sampler" in plugin:
                     continue
                 if (node, plugin) not in uploads:
-                    results.append({"node": node, "vsn": node_to_vsn.get(node, node), "msg": f"missing upload from {plugin}"})
+                    results.append(
+                        {
+                            "node": node,
+                            "vsn": node_to_vsn.get(node, node),
+                            "msg": f"missing upload from {plugin}",
+                        }
+                    )
 
     results = pd.DataFrame(results)
     for (node, vsn), results_node in results.groupby(["node", "vsn"]):
