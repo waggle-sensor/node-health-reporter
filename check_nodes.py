@@ -367,6 +367,7 @@ def main():
     nodes_with_issues = set(results.node)
     print("Total nodes with issues:", len(nodes_with_issues))
     print("Total unique data series:", len(df))
+    print("Total number of issues:", len(results))
 
 
 if __name__ == "__main__":

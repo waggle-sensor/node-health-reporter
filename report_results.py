@@ -114,6 +114,7 @@ def main():
     parser.add_argument("--keep-last", default=100, type=int, help="number of old files to keep")
     parser.add_argument("-p", "--path", default=".", help="path to store files")
     parser.add_argument("-c", "--checker", default="check_nodes.py", help="path to checker script")
+    parser.add_argument("--window", default="5m", help="data window duration for check")
     args = parser.parse_args()
 
     SLACK_TOKEN = os.environ["SLACK_TOKEN"]
@@ -125,7 +126,7 @@ def main():
         "python3",
         args.checker,
         "--window",
-        "2m",
+        args.window,
         # "--ssh", # TODO provide ssh access
         "--uploads",
         "-o",
