@@ -300,9 +300,9 @@ def main():
                     results.append({"node": node, "vsn": vsn, "msg": f"missing raingauge {name}"})
         elif node in blade_nodes:
             # check dellblade sys.*
-            found = set(df_node.loc[df_node["meta.host"].str.endswith("dellblade"), "name"])
+            found = set(df_node.loc[df_node["meta.host"].str.endswith("sb-core"), "name"])
             for name in sys_from_dellblade - found:
-                results.append({"node": node, "vsn": vsn, "msg": f"missing dellblade {name}"})
+                results.append({"node": node, "vsn": vsn, "msg": f"missing sb-core {name}"})
 
     if args.ssh:
         for node in set(online_nodes):
