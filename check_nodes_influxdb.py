@@ -191,7 +191,7 @@ device_output_table = {
 }
 
 
-def write_results_to_influxdb(url, token, org, records):
+def write_results_to_influxdb(url, token, org, bucket, records):
     data = []
 
     for r in records:
@@ -205,7 +205,7 @@ def write_results_to_influxdb(url, token, org, records):
     
     with influxdb_client.InfluxDBClient(url=url, token=token, org=org) as client, \
          client.write_api(write_options=WriteOptions(batch_size=10000)) as write_api:
-        write_api.write(bucket="health-check-test", org=org, record=data, write_precision=WritePrecision.S)
+        write_api.write(bucket=bucket, org=org, record=data, write_precision=WritePrecision.S)
 
 
 def check_publishing_frequency(df, freq, window):
@@ -216,6 +216,7 @@ def check_publishing_frequency(df, freq, window):
 
 
 class Node(NamedTuple):
+    id: str
     vsn: str
     type: str
     devices: set
@@ -253,6 +254,7 @@ def load_node_table_item(item):
 
     # TODO add camera stuff for upload checks
     return Node(
+        id=item["node_id"].lower(),
         vsn=item["vsn"].upper(),
         type=node_type,
         devices=devices,
@@ -284,9 +286,7 @@ def get_rollup_range(start, end, now=None):
     return start.floor("1h"), end.floor("1h")
 
 
-def get_records_for_window(nodes, start, end, window):
-    logging.info("getting records in %s %s", start, end)
-
+def get_health_records_for_window(nodes, start, end, window):
     records = []
 
     logging.info("querying data...")
@@ -373,6 +373,51 @@ def get_records_for_window(nodes, start, end, window):
     return records
 
 
+def get_sanity_records_for_window(nodes, start, end):
+    df = sage_data_client.query(start=start, end=end, filter={
+        "name": "sys.sanity.*"
+    })
+
+    df["timestamp"] = df["timestamp"].dt.round("1h")
+    df["total"] = 1
+    df["pass"] = (df["value"] == 0) | (df["meta.severity"] == "warning")
+    df["fail"] = df["value"] != 0
+
+    table = df.groupby(["meta.node", "meta.vsn"])[["total", "pass", "fail"]].sum()
+
+    records = []
+
+    for node in nodes:
+        try:
+            r = table.loc[(node.id, node.vsn)]
+            totals = {
+                "sanity_test_total": r["total"],
+                "sanity_test_pass_total": r["pass"],
+                "sanity_test_fail_total": r["fail"],
+            }
+        except KeyError:
+            totals = {
+                "sanity_test_total": 0,
+                "sanity_test_pass_total": 0,
+                "sanity_test_fail_total": 0,
+            }
+
+        for name, value in totals.items():
+            records.append({
+                "measurement": name,
+                "tags": {
+                    "vsn": node.vsn,
+                    "node": node.id,
+                },
+                "fields": {
+                    "value": int(value),
+                },
+                "timestamp": start,
+            })
+
+    return records
+
+
 def main():
     INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
     INFLUXDB_ORG = "waggle"
@@ -400,15 +445,29 @@ def main():
     logging.info("current time is %s", now)
 
     for start, end in time_windows(start, end, window):
-        records = get_records_for_window(nodes, start, end, window)
+        logging.info("getting health records in %s %s", start, end)
+        health_records = get_health_records_for_window(nodes, start, end, window)
 
-        logging.info("writing %s records...", len(records))
+        logging.info("writing %d health records...", len(health_records))
         write_results_to_influxdb(
             url=INFLUXDB_URL,
             org=INFLUXDB_ORG,
             token=INFLUXDB_TOKEN,
-            records=records)
-        logging.info("done")
+            bucket="health-check-test",
+            records=health_records)
+
+        logging.info("getting sanity records in %s %s", start, end)
+        sanity_records = get_sanity_records_for_window(nodes, start, end)
+
+        logging.info("writing %d sanity health records...", len(sanity_records))
+        write_results_to_influxdb(
+            url=INFLUXDB_URL,
+            org=INFLUXDB_ORG,
+            token=INFLUXDB_TOKEN,
+            bucket="downsampled-test",
+            records=sanity_records)
+
+    logging.info("done!")
 
 
 if __name__ == "__main__":
