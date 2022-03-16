@@ -1,3 +1,4 @@
 sage-data-client==0.4.*
 slackclient
 influxdb-client[ciso]
+requests
