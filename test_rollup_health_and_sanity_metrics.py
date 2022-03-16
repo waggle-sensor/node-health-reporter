@@ -1,5 +1,4 @@
-import pandas
-from check_nodes_influxdb import load_node_table, parse_time, get_rollup_range, time_windows
+from rollup_health_and_sanity_metrics import load_node_table, parse_time, get_rollup_range, time_windows
 import pandas as pd
 import unittest
 
