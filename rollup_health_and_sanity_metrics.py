@@ -381,7 +381,7 @@ def get_sanity_records_for_window(nodes, start, end):
     df["timestamp"] = df["timestamp"].dt.round("1h")
     df["total"] = 1
     df["pass"] = (df["value"] == 0) | (df["meta.severity"] == "warning")
-    df["fail"] = df["value"] != 0
+    df["fail"] = ~df["pass"]
 
     table = df.groupby(["meta.node", "meta.vsn"])[["total", "pass", "fail"]].sum()
 
