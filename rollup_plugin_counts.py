@@ -85,7 +85,7 @@ def main():
             url=INFLUXDB_URL,
             org=INFLUXDB_ORG,
             token=INFLUXDB_TOKEN,
-            bucket="downsampled-test",
+            bucket="plugin-stats",
             records=records)
 
     logging.info("done!")
