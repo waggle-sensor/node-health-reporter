@@ -8,7 +8,6 @@ import json
 from utils import load_node_table, parse_time, get_rollup_range, time_windows, write_results_to_influxdb
 
 
-
 def get_plugin_counts_for_window(nodes, start, end, convert_timestamps=False):
     df = sage_data_client.query(start=start, end=end, filter={
         "plugin": ".*"
@@ -47,7 +46,6 @@ def get_plugin_counts_for_window(nodes, start, end, convert_timestamps=False):
     return records
 
 
-
 def main():
     INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
     INFLUXDB_ORG = "waggle"
@@ -58,8 +56,8 @@ def main():
         return parse_time(s, now=now)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", default="-2h", type=time_arg, help="relative start time")
-    parser.add_argument("--end", default="-1h", type=time_arg, help="relative end time")
+    parser.add_argument("--start", default="-1h", type=time_arg, help="relative start time")
+    parser.add_argument("--end", default="now", type=time_arg, help="relative end time")
     parser.add_argument("--window", default="1h", type=pd.Timedelta, help="window duration to aggreagate over")
     args = parser.parse_args()
 
