@@ -4,7 +4,7 @@ import pandas as pd
 import logging
 import sage_data_client
 from typing import NamedTuple
-from utils import load_node_table, parse_time, get_rollup_range, time_windows, write_results_to_influxdb
+from utils import load_node_table, parse_time, get_rollup_range, time_windows, write_results_to_influxdb, check_publishing_frequency
 
 
 sys_from_nxcore = {

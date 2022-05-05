@@ -29,7 +29,6 @@ def check_publishing_frequency(df, freq, window):
     return total_samples / expected_samples
 
 
-
 class Node(NamedTuple):
     id: str
     vsn: str
@@ -99,5 +98,3 @@ def get_rollup_range(start, end, now=None):
     if now is None:
         now = pd.to_datetime("now", utc=True)
     return start.floor("1h"), end.floor("1h")
-
-
