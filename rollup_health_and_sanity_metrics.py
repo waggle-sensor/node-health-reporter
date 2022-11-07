@@ -322,15 +322,12 @@ def get_sanity_records_for_window(nodes, start, end):
 
 
 def main():
-    INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
-    INFLUXDB_ORG = "waggle"
-    INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
-
     now = pd.to_datetime("now", utc=True)
     def time_arg(s):
         return parse_time(s, now=now)
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="perform dry run to view logs. will skip writing results to influxdb.")
     parser.add_argument("--start", default="-2h", type=time_arg, help="relative start time")
     parser.add_argument("--end", default="-1h", type=time_arg, help="relative end time")
     parser.add_argument("--window", default="1h", type=pd.Timedelta, help="window duration to aggreagate over")
@@ -340,6 +337,11 @@ def main():
         level=logging.INFO,
         format="%(asctime)s %(message)s",
         datefmt="%Y/%m/%d %H:%M:%S")
+
+    if not args.dry_run:
+        INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
+        INFLUXDB_ORG = "waggle"
+        INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
 
     nodes = load_node_table()
     start, end = get_rollup_range(args.start, args.end)
@@ -351,24 +353,26 @@ def main():
         logging.info("getting health records in %s %s", start, end)
         health_records = get_health_records_for_window(nodes, start, end, window)
 
-        logging.info("writing %d health records...", len(health_records))
-        write_results_to_influxdb(
-            url=INFLUXDB_URL,
-            org=INFLUXDB_ORG,
-            token=INFLUXDB_TOKEN,
-            bucket="health-check-test",
-            records=health_records)
+        if not args.dry_run:
+            logging.info("writing %d health records...", len(health_records))
+            write_results_to_influxdb(
+                url=INFLUXDB_URL,
+                org=INFLUXDB_ORG,
+                token=INFLUXDB_TOKEN,
+                bucket="health-check-test",
+                records=health_records)
 
         logging.info("getting sanity records in %s %s", start, end)
         sanity_records = get_sanity_records_for_window(nodes, start, end)
 
-        logging.info("writing %d sanity health records...", len(sanity_records))
-        write_results_to_influxdb(
-            url=INFLUXDB_URL,
-            org=INFLUXDB_ORG,
-            token=INFLUXDB_TOKEN,
-            bucket="downsampled-test",
-            records=sanity_records)
+        if not args.dry_run:
+            logging.info("writing %d sanity health records...", len(sanity_records))
+            write_results_to_influxdb(
+                url=INFLUXDB_URL,
+                org=INFLUXDB_ORG,
+                token=INFLUXDB_TOKEN,
+                bucket="downsampled-test",
+                records=sanity_records)
 
     logging.info("done!")
 
