@@ -47,5 +47,7 @@ This will provide detailed logs of the time window being aggergated as long with
 2022/11/07 15:41:17 failed sla 2022-11-07 17:00:00+00:00 2022-11-07 18:00:00+00:00 W01E nxcore sys sys.freq.emc 0.000
 2022/11/07 15:41:17 failed sla 2022-11-07 17:00:00+00:00 2022-11-07 18:00:00+00:00 W01E nxcore sys sys.fs.size 0.000
 2022/11/07 15:41:17 failed sla 2022-11-07 17:00:00+00:00 2022-11-07 18:00:00+00:00 W01E nxcore sys sys.cpu_seconds 0.000
-    ^log timestamp                   ^window timestamp                             ^vsn  ^group^    ^ metric        ^score (0 = all failed, 1 = all passed)
+    ^log timestamp                   ^window timestamp                             ^vsn  ^group^     metric        ^score (0 = all failed, 1 = all passed)
 ```
+
+Note: Most of the SLAs are based soley on the existance of a particular metric. We generally do not check specific ranges of values in the rollup.
