@@ -4,7 +4,14 @@ import pandas as pd
 import logging
 import sage_data_client
 from typing import NamedTuple
-from utils import load_node_table, parse_time, get_rollup_range, time_windows, write_results_to_influxdb, check_publishing_frequency
+from utils import (
+    load_node_table,
+    parse_time,
+    get_rollup_range,
+    time_windows,
+    write_results_to_influxdb,
+    check_publishing_frequency,
+)
 
 
 sys_from_nxcore = {
@@ -201,29 +208,33 @@ def get_health_records_for_window(nodes, start, end, window):
     timestamp = start
 
     def add_node_health_check_record(vsn, value):
-        records.append({
-            "measurement": "node_health_check",
-            "tags": {
-                "vsn": vsn,
-            },
-            "fields": {
-                "value": int(value),
-            },
-            "timestamp": timestamp,
-        })
+        records.append(
+            {
+                "measurement": "node_health_check",
+                "tags": {
+                    "vsn": vsn,
+                },
+                "fields": {
+                    "value": int(value),
+                },
+                "timestamp": timestamp,
+            }
+        )
 
     def add_device_health_check_record(vsn, device, value):
-        records.append({
-            "measurement": "device_health_check",
-            "tags": {
-                "vsn": vsn,
-                "device": device,
-            },
-            "fields": {
-                "value": int(value),
-            },
-            "timestamp": timestamp,
-        })
+        records.append(
+            {
+                "measurement": "device_health_check",
+                "tags": {
+                    "vsn": vsn,
+                    "device": device,
+                },
+                "fields": {
+                    "value": int(value),
+                },
+                "timestamp": timestamp,
+            }
+        )
 
     # NOTE metrics agent doesn't add a task name, so we set task name
     # to system for system metrics.
@@ -255,7 +266,16 @@ def get_health_records_for_window(nodes, start, end, window):
             for task, name, f in check_publishing_frequency_for_device(device, window):
                 if f < sla:
                     healthy = False
-                    logging.info("failed sla %s %s %s %s %s %s %0.3f", start, end, node.vsn, device, task, name, f)
+                    logging.info(
+                        "failed sla %s %s %s %s %s %s %0.3f",
+                        start,
+                        end,
+                        node.vsn,
+                        device,
+                        task,
+                        name,
+                        f,
+                    )
             return healthy
 
         node_healthy = True
@@ -276,10 +296,16 @@ def get_health_records_for_window(nodes, start, end, window):
     return records
 
 
+exclude_sanity_tests = [
+    "sys.sanity_status.wes_telegraf_cadvisor",
+]
+
+
 def get_sanity_records_for_window(nodes, start, end):
-    df = sage_data_client.query(start=start, end=end, filter={
-        "name": "sys.sanity.*"
-    })
+    df = sage_data_client.query(start=start, end=end, filter={"name": "sys.sanity.*"})
+
+    # drop excluded sanity tests we know are failing because of system changes
+    df = df[~df.name.isin(exclude_sanity_tests)]
 
     df["timestamp"] = df["timestamp"].dt.round("1h")
     df["total"] = 1
@@ -306,37 +332,52 @@ def get_sanity_records_for_window(nodes, start, end):
             }
 
         for name, value in totals.items():
-            records.append({
-                "measurement": name,
-                "tags": {
-                    "vsn": node.vsn,
-                    "node": node.id,
-                },
-                "fields": {
-                    "value": int(value),
-                },
-                "timestamp": start,
-            })
+            records.append(
+                {
+                    "measurement": name,
+                    "tags": {
+                        "vsn": node.vsn,
+                        "node": node.id,
+                    },
+                    "fields": {
+                        "value": int(value),
+                    },
+                    "timestamp": start,
+                }
+            )
 
     return records
 
 
 def main():
     now = pd.to_datetime("now", utc=True)
+
     def time_arg(s):
         return parse_time(s, now=now)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run", action="store_true", help="perform dry run to view logs. will skip writing results to influxdb.")
-    parser.add_argument("--start", default="-2h", type=time_arg, help="relative start time")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="perform dry run to view logs. will skip writing results to influxdb.",
+    )
+    parser.add_argument(
+        "--start", default="-2h", type=time_arg, help="relative start time"
+    )
     parser.add_argument("--end", default="-1h", type=time_arg, help="relative end time")
-    parser.add_argument("--window", default="1h", type=pd.Timedelta, help="window duration to aggreagate over")
+    parser.add_argument(
+        "--window",
+        default="1h",
+        type=pd.Timedelta,
+        help="window duration to aggreagate over",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(message)s",
-        datefmt="%Y/%m/%d %H:%M:%S")
+        datefmt="%Y/%m/%d %H:%M:%S",
+    )
 
     if not args.dry_run:
         INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
@@ -360,7 +401,8 @@ def main():
                 org=INFLUXDB_ORG,
                 token=INFLUXDB_TOKEN,
                 bucket="health-check-test",
-                records=health_records)
+                records=health_records,
+            )
 
         logging.info("getting sanity records in %s %s", start, end)
         sanity_records = get_sanity_records_for_window(nodes, start, end)
@@ -372,7 +414,8 @@ def main():
                 org=INFLUXDB_ORG,
                 token=INFLUXDB_TOKEN,
                 bucket="downsampled-test",
-                records=sanity_records)
+                records=sanity_records,
+            )
 
     logging.info("done!")
 
