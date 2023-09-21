@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import logging
 import sage_data_client
+import requests
 from typing import NamedTuple
 from utils import (
     load_node_table,
@@ -196,6 +197,32 @@ device_output_table = {
 }
 
 
+def get_scheduled_tasks_by_node():
+    """
+    Queries the cloud scheduler and returns a map of VSN -> [Plugin names across all running jobs for VSN]
+    """
+    r = requests.get("https://es.sagecontinuum.org/api/v1/jobs/list")
+    r.raise_for_status()
+    jobs = list(r.json().values())
+
+    # filter only running jobs
+    jobs = [job for job in jobs if job["state"]["last_state"] == "Running"]
+
+    tasks_by_node = {}
+
+    for job in jobs:
+        plugins = job.get("plugins") or []
+        nodes = job.get("nodes") or {}
+
+        for plugin in plugins:
+            for vsn in nodes.keys():
+                if vsn not in tasks_by_node:
+                    tasks_by_node[vsn] = []
+                tasks_by_node[vsn].append(plugin["name"])
+
+    return tasks_by_node
+
+
 def get_health_records_for_window(nodes, start, end, window):
     records = []
 
@@ -242,6 +269,8 @@ def get_health_records_for_window(nodes, start, end, window):
 
     vsn_groups = df.groupby(["meta.vsn"])
 
+    scheduled_tasks_by_node = get_scheduled_tasks_by_node()
+
     for node in nodes:
         try:
             df_vsn = vsn_groups.get_group(node.vsn)
@@ -261,9 +290,15 @@ def get_health_records_for_window(nodes, start, end, window):
                 except KeyError:
                     yield task, name, 0.0
 
+        scheduled_tasks = scheduled_tasks_by_node.get(node.vsn, [])
+
         def check_publishing_sla_for_device(device, window, sla):
             healthy = True
+
             for task, name, f in check_publishing_frequency_for_device(device, window):
+                # skip image and audio sampler tasks which are not scheduled
+                if "sampler" in task and task not in scheduled_tasks:
+                    continue
                 if f < sla:
                     healthy = False
                     logging.info(
