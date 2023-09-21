@@ -311,6 +311,7 @@ def get_health_records_for_window(nodes, start, end, window):
                         name,
                         f,
                     )
+
             return healthy
 
         node_healthy = True
