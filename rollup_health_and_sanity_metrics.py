@@ -15,24 +15,30 @@ from utils import (
 )
 
 
+# these metrics are coming in inconsistently. we should debug later
+# but to make the health report less red, we'll comment them out.
+# sys.cooling*
+# sys.freq*
+# sys.gps*
+
 sys_from_nxcore = {
     "sys.boot_time",
-    "sys.cooling",
-    "sys.cooling_max",
+    # "sys.cooling",
+    # "sys.cooling_max",
     "sys.cpu_seconds",
-    "sys.freq.ape",
-    "sys.freq.cpu",
-    "sys.freq.cpu_max",
-    "sys.freq.cpu_min",
-    "sys.freq.cpu_perc",
-    "sys.freq.emc",
-    "sys.freq.emc_max",
-    "sys.freq.emc_min",
-    "sys.freq.emc_perc",
-    "sys.freq.gpu",
-    "sys.freq.gpu_max",
-    "sys.freq.gpu_min",
-    "sys.freq.gpu_perc",
+    # "sys.freq.ape",
+    # "sys.freq.cpu",
+    # "sys.freq.cpu_max",
+    # "sys.freq.cpu_min",
+    # "sys.freq.cpu_perc",
+    # "sys.freq.emc",
+    # "sys.freq.emc_max",
+    # "sys.freq.emc_min",
+    # "sys.freq.emc_perc",
+    # "sys.freq.gpu",
+    # "sys.freq.gpu_max",
+    # "sys.freq.gpu_min",
+    # "sys.freq.gpu_perc",
     "sys.fs.avail",
     "sys.fs.size",
     "sys.hwmon",
@@ -59,7 +65,7 @@ sys_from_nxcore = {
     # "sys.gps.epy", # not sent with no GPS fix
     # "sys.gps.epv", # not sent with no GPS fix
     # "sys.gps.satellites", # not sent with no GPS fix
-    "sys.gps.mode",
+    # "sys.gps.mode",
 }
 
 sys_from_dellblade = {
@@ -103,22 +109,22 @@ sys_from_dellblade = {
 
 sys_from_nxagent = {
     "sys.boot_time",
-    "sys.cooling",
-    "sys.cooling_max",
+    # "sys.cooling",
+    # "sys.cooling_max",
     "sys.cpu_seconds",
-    "sys.freq.ape",
-    "sys.freq.cpu",
-    "sys.freq.cpu_max",
-    "sys.freq.cpu_min",
-    "sys.freq.cpu_perc",
-    "sys.freq.emc",
-    "sys.freq.emc_max",
-    "sys.freq.emc_min",
-    "sys.freq.emc_perc",
-    "sys.freq.gpu",
-    "sys.freq.gpu_max",
-    "sys.freq.gpu_min",
-    "sys.freq.gpu_perc",
+    # "sys.freq.ape",
+    # "sys.freq.cpu",
+    # "sys.freq.cpu_max",
+    # "sys.freq.cpu_min",
+    # "sys.freq.cpu_perc",
+    # "sys.freq.emc",
+    # "sys.freq.emc_max",
+    # "sys.freq.emc_min",
+    # "sys.freq.emc_perc",
+    # "sys.freq.gpu",
+    # "sys.freq.gpu_max",
+    # "sys.freq.gpu_min",
+    # "sys.freq.gpu_perc",
     "sys.fs.avail",
     "sys.fs.size",
     "sys.hwmon",
