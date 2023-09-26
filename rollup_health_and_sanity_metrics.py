@@ -4,7 +4,6 @@ import pandas as pd
 import logging
 import sage_data_client
 import requests
-from typing import NamedTuple
 from utils import (
     load_node_table,
     parse_time,
@@ -188,10 +187,10 @@ outputs_from_raingauge = {
 # the possible devices on a node. the frequency is the minimum expected
 # publishing frequency
 device_output_table = {
-    "nxcore": [("sys", name, "120s") for name in sys_from_nxcore],
-    "nxagent": [("sys", name, "120s") for name in sys_from_nxagent],
-    "rpi": [("sys", name, "120s") for name in sys_from_rpi],
-    "dell": [("sys", name, "60s") for name in sys_from_dellblade],
+    "nxcore": [("nxcore", name, "120s") for name in sys_from_nxcore],
+    "nxagent": [("nxagent", name, "120s") for name in sys_from_nxagent],
+    "rpi": [("rpi", name, "120s") for name in sys_from_rpi],
+    "dell": [("dell", name, "60s") for name in sys_from_dellblade],
     "bme280": [("wes-iio-bme280", name, "30s") for name in outputs_from_bme],
     "bme680": [("wes-iio-bme680", name, "30s") for name in outputs_from_bme],
     "raingauge": [("wes-raingauge", name, "30s") for name in outputs_from_raingauge],
@@ -269,9 +268,14 @@ def get_health_records_for_window(nodes, start, end, window):
             }
         )
 
-    # NOTE metrics agent doesn't add a task name, so we set task name
-    # to system for system metrics.
-    df.loc[df["name"].str.startswith("sys."), "meta.task"] = "sys"
+    # NOTE derive task name from sys metrics using host
+    is_sys = df["name"].str.startswith("sys.")
+    df.loc[is_sys & df["meta.host"].str.endswith("nxcore"), "meta.task"] = "nxcore"
+    df.loc[is_sys & df["meta.host"].str.endswith("nxagent"), "meta.task"] = "nxagent"
+    # NOTE this will not really work for nodes with multiple rpis. we need to rethink this a bit
+    # in the future. for now, we want to fix the urgent problem of differentiating most sys metrics.
+    df.loc[is_sys & df["meta.host"].str.endswith("rpi"), "meta.task"] = "rpi"
+    df.loc[is_sys & df["meta.host"].str.endswith("sbcore"), "meta.task"] = "dell"
 
     vsn_groups = df.groupby(["meta.vsn"])
 
