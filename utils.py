@@ -1,9 +1,13 @@
-
 import influxdb_client
-from influxdb_client.client.write_api import WriteOptions, WritePrecision, Point, WriteType
+from influxdb_client.client.write_api import (
+    WriteOptions,
+    WritePrecision,
+    Point,
+    WriteType,
+)
 import pandas as pd
 import requests
-from typing import NamedTuple
+from dataclasses import dataclass
 
 
 def write_results_to_influxdb(url, token, org, bucket, records):
@@ -18,9 +22,14 @@ def write_results_to_influxdb(url, token, org, bucket, records):
         p = p.time(int(r["timestamp"].timestamp()), write_precision=WritePrecision.S)
         data.append(p)
 
-    with influxdb_client.InfluxDBClient(url=url, token=token, org=org) as client, \
-         client.write_api(write_options=WriteOptions(batch_size=10000)) as write_api:
-        write_api.write(bucket=bucket, org=org, record=data, write_precision=WritePrecision.S)
+    with influxdb_client.InfluxDBClient(
+        url=url, token=token, org=org
+    ) as client, client.write_api(
+        write_options=WriteOptions(batch_size=10000)
+    ) as write_api:
+        write_api.write(
+            bucket=bucket, org=org, record=data, write_precision=WritePrecision.S
+        )
 
 
 def check_publishing_frequency(df, freq, window):
@@ -29,7 +38,8 @@ def check_publishing_frequency(df, freq, window):
     return total_samples / expected_samples
 
 
-class Node(NamedTuple):
+@dataclass
+class Node:
     id: str
     vsn: str
     type: str
@@ -54,11 +64,8 @@ def load_node_table_item(item):
         devices.add("nxagent")
     if item["shield"] is True:
         devices.add("rpi")
-    if item["shield"] is True:
         devices.add("raingauge")
-    if item["shield"] is True:
         devices.add("bme680")
-    if item["shield"] is True:
         devices.add("microphone")
 
     # add cameras
