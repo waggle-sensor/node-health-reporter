@@ -76,7 +76,7 @@ def main():
         logging.info("getting plugin counts for %s %s", start, end)
         records = get_plugin_counts_for_window(nodes, start, end)
 
-        logging.info("writing %d plugin counts records...", len(records))
+        logging.info("writing %d plugin count records...", len(records))
         write_results_to_influxdb(
             url=INFLUXDB_URL,
             org=INFLUXDB_ORG,
