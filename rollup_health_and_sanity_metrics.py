@@ -185,8 +185,7 @@ outputs_from_raingauge = {
 }
 
 # add a stuct here which either has count or interval so we can check this
-
-"nxcore": Check("nxcore", name, mean_publish_interval="3min")
+# "nxcore": Check("nxcore", name, mean_publish_interval="3min")
 
 # device_output_table describes the output publishing policy for each of
 # the possible devices on a node. the frequency is the minimum expected
