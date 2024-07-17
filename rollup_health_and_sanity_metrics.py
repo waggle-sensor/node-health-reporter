@@ -1,5 +1,6 @@
 import argparse
 import os
+from os import getenv
 import pandas as pd
 import logging
 import sage_data_client
@@ -8,7 +9,7 @@ from utils import (
     load_node_table,
     parse_time,
     get_rollup_range,
-    time_windows,
+    get_time_windows,
     write_results_to_influxdb,
     check_publishing_frequency,
 )
@@ -182,6 +183,10 @@ outputs_from_raingauge = {
     "env.raingauge.rint",
     "env.raingauge.total_acc",
 }
+
+# add a stuct here which either has count or interval so we can check this
+
+"nxcore": Check("nxcore", name, mean_publish_interval="3min")
 
 # device_output_table describes the output publishing policy for each of
 # the possible devices on a node. the frequency is the minimum expected
@@ -426,8 +431,8 @@ def main():
     )
 
     if not args.dry_run:
-        INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
-        INFLUXDB_ORG = "waggle"
+        INFLUXDB_URL = getenv("INFLUXDB_URL", "https://influxdb.sagecontinuum.org")
+        INFLUXDB_ORG = getenv("INFLUXDB_ORG", "waggle")
         INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
 
     nodes = load_node_table()
@@ -436,7 +441,7 @@ def main():
 
     logging.info("current time is %s", now)
 
-    for start, end in time_windows(start, end, window):
+    for start, end in get_time_windows(start, end, window):
         logging.info("getting health records in %s %s", start, end)
         health_records = get_health_records_for_window(nodes, start, end, window)
 

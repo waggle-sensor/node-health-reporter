@@ -82,9 +82,9 @@ def load_node_table_item(item):
     )
 
 
-def time_windows(start, end, freq):
+def get_time_windows(start, end, freq):
     windows = pd.date_range(start, end, freq=freq)
-    return zip(windows[:-1], windows[1:])
+    return list(zip(windows[:-1], windows[1:]))
 
 
 def parse_time(s, now=None):
