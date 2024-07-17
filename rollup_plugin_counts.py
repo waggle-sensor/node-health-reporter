@@ -95,6 +95,7 @@ def main():
         INFLUXDB_URL = getenv("INFLUXDB_URL", "https://influxdb.sagecontinuum.org")
         INFLUXDB_ORG = getenv("INFLUXDB_ORG", "waggle")
         INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
+        INFLUXDB_BUCKET = getenv("INFLUXDB_BUCKET", "plugin-stats")
 
     nodes = load_node_table()
     start, end = get_rollup_range(args.start, args.end)
@@ -118,7 +119,7 @@ def main():
                 url=INFLUXDB_URL,
                 org=INFLUXDB_ORG,
                 token=INFLUXDB_TOKEN,
-                bucket="plugin-stats",
+                bucket=INFLUXDB_BUCKET,
                 records=records,
             )
 

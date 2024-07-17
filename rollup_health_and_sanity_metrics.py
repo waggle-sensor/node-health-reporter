@@ -422,6 +422,11 @@ def main():
         type=pd.Timedelta,
         help="window duration to aggreagate over",
     )
+    parser.add_argument(
+        "--reverse",
+        action="store_true",
+        help="reverse the rollup starting so it works from most recent to least recent",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -434,6 +439,8 @@ def main():
         INFLUXDB_URL = getenv("INFLUXDB_URL", "https://influxdb.sagecontinuum.org")
         INFLUXDB_ORG = getenv("INFLUXDB_ORG", "waggle")
         INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
+        INFLUXDB_BUCKET_HEALTH = getenv("INFLUXDB_BUCKET_HEALTH", "health-check-test")
+        INFLUXDB_BUCKET_SANITY = getenv("INFLUXDB_BUCKET_SANITY", "downsampled-test")
 
     nodes = load_node_table()
     start, end = get_rollup_range(args.start, args.end)
@@ -441,7 +448,12 @@ def main():
 
     logging.info("current time is %s", now)
 
-    for start, end in get_time_windows(start, end, window):
+    time_windows = get_time_windows(start, end, window)
+
+    if args.reverse:
+        time_windows = reversed(time_windows)
+
+    for start, end in time_windows:
         logging.info("getting health records in %s %s", start, end)
         health_records = get_health_records_for_window(nodes, start, end, window)
 
@@ -451,7 +463,7 @@ def main():
                 url=INFLUXDB_URL,
                 org=INFLUXDB_ORG,
                 token=INFLUXDB_TOKEN,
-                bucket="health-check-test",
+                bucket=INFLUXDB_BUCKET_HEALTH,
                 records=health_records,
             )
 
@@ -459,12 +471,12 @@ def main():
         sanity_records = get_sanity_records_for_window(nodes, start, end)
 
         if not args.dry_run:
-            logging.info("writing %d sanity health records...", len(sanity_records))
+            logging.info("writing %d sanity records...", len(sanity_records))
             write_results_to_influxdb(
                 url=INFLUXDB_URL,
                 org=INFLUXDB_ORG,
                 token=INFLUXDB_TOKEN,
-                bucket="downsampled-test",
+                bucket=INFLUXDB_BUCKET_SANITY,
                 records=sanity_records,
             )
 
