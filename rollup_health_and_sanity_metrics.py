@@ -1,37 +1,44 @@
 import argparse
 import os
+from os import getenv
 import pandas as pd
 import logging
 import sage_data_client
-from typing import NamedTuple
+import requests
 from utils import (
     load_node_table,
     parse_time,
     get_rollup_range,
-    time_windows,
+    get_time_windows,
     write_results_to_influxdb,
     check_publishing_frequency,
 )
 
 
+# these metrics are coming in inconsistently. we should debug later
+# but to make the health report less red, we'll comment them out.
+# sys.cooling*
+# sys.freq*
+# sys.gps*
+
 sys_from_nxcore = {
     "sys.boot_time",
-    "sys.cooling",
-    "sys.cooling_max",
+    # "sys.cooling",
+    # "sys.cooling_max",
     "sys.cpu_seconds",
-    "sys.freq.ape",
-    "sys.freq.cpu",
-    "sys.freq.cpu_max",
-    "sys.freq.cpu_min",
-    "sys.freq.cpu_perc",
-    "sys.freq.emc",
-    "sys.freq.emc_max",
-    "sys.freq.emc_min",
-    "sys.freq.emc_perc",
-    "sys.freq.gpu",
-    "sys.freq.gpu_max",
-    "sys.freq.gpu_min",
-    "sys.freq.gpu_perc",
+    # "sys.freq.ape",
+    # "sys.freq.cpu",
+    # "sys.freq.cpu_max",
+    # "sys.freq.cpu_min",
+    # "sys.freq.cpu_perc",
+    # "sys.freq.emc",
+    # "sys.freq.emc_max",
+    # "sys.freq.emc_min",
+    # "sys.freq.emc_perc",
+    # "sys.freq.gpu",
+    # "sys.freq.gpu_max",
+    # "sys.freq.gpu_min",
+    # "sys.freq.gpu_perc",
     "sys.fs.avail",
     "sys.fs.size",
     "sys.hwmon",
@@ -58,7 +65,7 @@ sys_from_nxcore = {
     # "sys.gps.epy", # not sent with no GPS fix
     # "sys.gps.epv", # not sent with no GPS fix
     # "sys.gps.satellites", # not sent with no GPS fix
-    "sys.gps.mode",
+    # "sys.gps.mode",
 }
 
 sys_from_dellblade = {
@@ -102,22 +109,22 @@ sys_from_dellblade = {
 
 sys_from_nxagent = {
     "sys.boot_time",
-    "sys.cooling",
-    "sys.cooling_max",
+    # "sys.cooling",
+    # "sys.cooling_max",
     "sys.cpu_seconds",
-    "sys.freq.ape",
-    "sys.freq.cpu",
-    "sys.freq.cpu_max",
-    "sys.freq.cpu_min",
-    "sys.freq.cpu_perc",
-    "sys.freq.emc",
-    "sys.freq.emc_max",
-    "sys.freq.emc_min",
-    "sys.freq.emc_perc",
-    "sys.freq.gpu",
-    "sys.freq.gpu_max",
-    "sys.freq.gpu_min",
-    "sys.freq.gpu_perc",
+    # "sys.freq.ape",
+    # "sys.freq.cpu",
+    # "sys.freq.cpu_max",
+    # "sys.freq.cpu_min",
+    # "sys.freq.cpu_perc",
+    # "sys.freq.emc",
+    # "sys.freq.emc_max",
+    # "sys.freq.emc_min",
+    # "sys.freq.emc_perc",
+    # "sys.freq.gpu",
+    # "sys.freq.gpu_max",
+    # "sys.freq.gpu_min",
+    # "sys.freq.gpu_perc",
     "sys.fs.avail",
     "sys.fs.size",
     "sys.hwmon",
@@ -177,14 +184,17 @@ outputs_from_raingauge = {
     "env.raingauge.total_acc",
 }
 
+# add a stuct here which either has count or interval so we can check this
+# "nxcore": Check("nxcore", name, mean_publish_interval="3min")
+
 # device_output_table describes the output publishing policy for each of
 # the possible devices on a node. the frequency is the minimum expected
 # publishing frequency
 device_output_table = {
-    "nxcore": [("sys", name, "120s") for name in sys_from_nxcore],
-    "nxagent": [("sys", name, "120s") for name in sys_from_nxagent],
-    "rpi": [("sys", name, "120s") for name in sys_from_rpi],
-    "dell": [("sys", name, "60s") for name in sys_from_dellblade],
+    "nxcore": [("nxcore", name, "120s") for name in sys_from_nxcore],
+    "nxagent": [("nxagent", name, "120s") for name in sys_from_nxagent],
+    "rpi": [("rpi", name, "120s") for name in sys_from_rpi],
+    "dell": [("dell", name, "60s") for name in sys_from_dellblade],
     "bme280": [("wes-iio-bme280", name, "30s") for name in outputs_from_bme],
     "bme680": [("wes-iio-bme680", name, "30s") for name in outputs_from_bme],
     "raingauge": [("wes-raingauge", name, "30s") for name in outputs_from_raingauge],
@@ -194,6 +204,32 @@ device_output_table = {
     "right_camera": [("imagesampler-right", "upload", "1h")],
     "microphone": [("audiosampler", "upload", "1h")],
 }
+
+
+def get_scheduled_tasks_by_node():
+    """
+    Queries the cloud scheduler and returns a map of VSN -> [Plugin names across all running jobs for VSN]
+    """
+    r = requests.get("https://es.sagecontinuum.org/api/v1/jobs/list")
+    r.raise_for_status()
+    jobs = list(r.json().values())
+
+    # filter only running jobs
+    jobs = [job for job in jobs if job["state"]["last_state"] == "Running"]
+
+    tasks_by_node = {}
+
+    for job in jobs:
+        plugins = job.get("plugins") or []
+        nodes = job.get("nodes") or {}
+
+        for plugin in plugins:
+            for vsn in nodes.keys():
+                if vsn not in tasks_by_node:
+                    tasks_by_node[vsn] = []
+                tasks_by_node[vsn].append(plugin["name"])
+
+    return tasks_by_node
 
 
 def get_health_records_for_window(nodes, start, end, window):
@@ -236,11 +272,18 @@ def get_health_records_for_window(nodes, start, end, window):
             }
         )
 
-    # NOTE metrics agent doesn't add a task name, so we set task name
-    # to system for system metrics.
-    df.loc[df["name"].str.startswith("sys."), "meta.task"] = "sys"
+    # NOTE derive task name from sys metrics using host
+    is_sys = df["name"].str.startswith("sys.")
+    df.loc[is_sys & df["meta.host"].str.endswith("nxcore"), "meta.task"] = "nxcore"
+    df.loc[is_sys & df["meta.host"].str.endswith("nxagent"), "meta.task"] = "nxagent"
+    # NOTE this will not really work for nodes with multiple rpis. we need to rethink this a bit
+    # in the future. for now, we want to fix the urgent problem of differentiating most sys metrics.
+    df.loc[is_sys & df["meta.host"].str.endswith("rpi"), "meta.task"] = "rpi"
+    df.loc[is_sys & df["meta.host"].str.endswith("sbcore"), "meta.task"] = "dell"
 
     vsn_groups = df.groupby(["meta.vsn"])
+
+    scheduled_tasks_by_node = get_scheduled_tasks_by_node()
 
     for node in nodes:
         try:
@@ -261,9 +304,15 @@ def get_health_records_for_window(nodes, start, end, window):
                 except KeyError:
                     yield task, name, 0.0
 
+        scheduled_tasks = scheduled_tasks_by_node.get(node.vsn, [])
+
         def check_publishing_sla_for_device(device, window, sla):
             healthy = True
+
             for task, name, f in check_publishing_frequency_for_device(device, window):
+                # skip image and audio sampler tasks which are not scheduled
+                if "sampler" in task and task not in scheduled_tasks:
+                    continue
                 if f < sla:
                     healthy = False
                     logging.info(
@@ -276,6 +325,7 @@ def get_health_records_for_window(nodes, start, end, window):
                         name,
                         f,
                     )
+
             return healthy
 
         node_healthy = True
@@ -371,6 +421,11 @@ def main():
         type=pd.Timedelta,
         help="window duration to aggreagate over",
     )
+    parser.add_argument(
+        "--reverse",
+        action="store_true",
+        help="reverse the rollup starting so it works from most recent to least recent",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -380,9 +435,11 @@ def main():
     )
 
     if not args.dry_run:
-        INFLUXDB_URL = "https://influxdb.sagecontinuum.org"
-        INFLUXDB_ORG = "waggle"
+        INFLUXDB_URL = getenv("INFLUXDB_URL", "https://influxdb.sagecontinuum.org")
+        INFLUXDB_ORG = getenv("INFLUXDB_ORG", "waggle")
         INFLUXDB_TOKEN = os.environ["INFLUXDB_TOKEN"]
+        INFLUXDB_BUCKET_HEALTH = getenv("INFLUXDB_BUCKET_HEALTH", "health-check-test")
+        INFLUXDB_BUCKET_SANITY = getenv("INFLUXDB_BUCKET_SANITY", "downsampled-test")
 
     nodes = load_node_table()
     start, end = get_rollup_range(args.start, args.end)
@@ -390,7 +447,12 @@ def main():
 
     logging.info("current time is %s", now)
 
-    for start, end in time_windows(start, end, window):
+    time_windows = get_time_windows(start, end, window)
+
+    if args.reverse:
+        time_windows = reversed(time_windows)
+
+    for start, end in time_windows:
         logging.info("getting health records in %s %s", start, end)
         health_records = get_health_records_for_window(nodes, start, end, window)
 
@@ -400,7 +462,7 @@ def main():
                 url=INFLUXDB_URL,
                 org=INFLUXDB_ORG,
                 token=INFLUXDB_TOKEN,
-                bucket="health-check-test",
+                bucket=INFLUXDB_BUCKET_HEALTH,
                 records=health_records,
             )
 
@@ -408,12 +470,12 @@ def main():
         sanity_records = get_sanity_records_for_window(nodes, start, end)
 
         if not args.dry_run:
-            logging.info("writing %d sanity health records...", len(sanity_records))
+            logging.info("writing %d sanity records...", len(sanity_records))
             write_results_to_influxdb(
                 url=INFLUXDB_URL,
                 org=INFLUXDB_ORG,
                 token=INFLUXDB_TOKEN,
-                bucket="downsampled-test",
+                bucket=INFLUXDB_BUCKET_SANITY,
                 records=sanity_records,
             )
 
