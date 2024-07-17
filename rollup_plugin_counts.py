@@ -111,7 +111,6 @@ def main():
     for start, end in time_windows:
         logging.info("getting plugin counts for %s %s", start, end)
         records = get_plugin_counts_for_window(nodes, start, end)
-        # print(json.dumps(records))
 
         if not args.dry_run:
             logging.info("writing %d plugin stats records...", len(records))
