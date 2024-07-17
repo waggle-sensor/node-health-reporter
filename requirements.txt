@@ -1,4 +1,4 @@
-sage-data-client==0.7.1
+sage-data-client==0.8.0
 slackclient
 influxdb-client[ciso]
 requests
