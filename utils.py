@@ -62,10 +62,6 @@ def load_node_table_item(item):
     for sensor in item["sensors"]:
         devices.add(sensor["name"].lower())
 
-    # TODO: blade compute in new api is sbcore not dell in devices and blade in node type
-    #   so I have to refactor the code or change the type and device name to dell if it's
-    #   too complicated to change the code to use sbcore not dell
-
     # TODO add camera stuff for upload checks
     return Node(
         id=item["name"].lower(),
