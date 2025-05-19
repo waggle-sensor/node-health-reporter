@@ -68,7 +68,7 @@ sys_from_nxcore = {
     # "sys.gps.mode",
 }
 
-sys_from_dellblade = {
+sys_from_sbcore = {
     "sys.boot_time",
     # "sys.cooling",
     # "sys.cooling_max",
@@ -194,7 +194,7 @@ device_output_table = {
     "nxcore": [("nxcore", name, "120s") for name in sys_from_nxcore],
     "nxagent": [("nxagent", name, "120s") for name in sys_from_nxagent],
     "rpi": [("rpi", name, "120s") for name in sys_from_rpi],
-    "dell": [("dell", name, "60s") for name in sys_from_dellblade],
+    "sbcore": [("sbcore", name, "60s") for name in sys_from_sbcore],
     "bme280": [("wes-iio-bme280", name, "30s") for name in outputs_from_bme],
     "bme680": [("wes-iio-bme680", name, "30s") for name in outputs_from_bme],
     "raingauge": [("wes-raingauge", name, "30s") for name in outputs_from_raingauge],
@@ -279,7 +279,7 @@ def get_health_records_for_window(nodes, start, end, window):
     # NOTE this will not really work for nodes with multiple rpis. we need to rethink this a bit
     # in the future. for now, we want to fix the urgent problem of differentiating most sys metrics.
     df.loc[is_sys & df["meta.host"].str.endswith("rpi"), "meta.task"] = "rpi"
-    df.loc[is_sys & df["meta.host"].str.endswith("sbcore"), "meta.task"] = "dell"
+    df.loc[is_sys & df["meta.host"].str.endswith("sbcore"), "meta.task"] = "sbcore"
 
     vsn_groups = df.groupby(["meta.vsn"])
 

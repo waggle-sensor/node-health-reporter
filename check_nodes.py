@@ -88,7 +88,7 @@ sys_from_nx = {
     "sys.gps.mode",
 }
 
-sys_from_dellblade = {
+sys_from_sbcore = {
     "sys.boot_time",
     # "sys.cooling",
     # "sys.cooling_max",
@@ -299,9 +299,9 @@ def main():
                 for name in raingauge_names - found:
                     results.append({"node": node, "vsn": vsn, "msg": f"missing raingauge {name}"})
         elif node in blade_nodes:
-            # check dellblade sys.*
+            # check blade sys.*
             found = set(df_node.loc[df_node["meta.host"].str.endswith("sb-core"), "name"])
-            for name in sys_from_dellblade - found:
+            for name in sys_from_sbcore - found:
                 results.append({"node": node, "vsn": vsn, "msg": f"missing sb-core {name}"})
 
     if args.ssh:
