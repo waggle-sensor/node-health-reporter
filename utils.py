@@ -57,6 +57,8 @@ def load_node_table_item(item):
     devices = set()
 
     # new config
+    #NOTE: all computes and sensors are added, but not all are used in the rollup
+    # since not all have a tests configured in health_and_sanity_metrics.py
     for compute in item["computes"]:
         devices.add(compute["name"].lower())
     for sensor in item["sensors"]:
