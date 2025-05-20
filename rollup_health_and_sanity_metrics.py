@@ -289,7 +289,7 @@ def get_health_records_for_window(nodes, start, end, window):
 
     for node in nodes:
         try:
-            df_vsn = vsn_groups.get_group(node.vsn)
+            df_vsn = vsn_groups.get_group((node.vsn,))
         except:
             add_node_health_check_record(node.vsn, 0)
             for device in node.devices:
