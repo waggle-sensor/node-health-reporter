@@ -14,6 +14,8 @@ from utils import (
     check_publishing_frequency,
 )
 
+#TODO: fix error, https://chatgpt.com/share/682bb9b4-1ddc-8003-b01e-92987d175253
+
 
 # these metrics are coming in inconsistently. we should debug later
 # but to make the health report less red, we'll comment them out.
@@ -297,12 +299,13 @@ def get_health_records_for_window(nodes, start, end, window):
         groups = df_vsn.groupby(["meta.task", "name"])
 
         def check_publishing_frequency_for_device(device, window):
-            for task, name, freq in device_output_table[device]:
-                try:
-                    group = groups.get_group((task, name))
-                    yield task, name, check_publishing_frequency(group, freq, window)
-                except KeyError:
-                    yield task, name, 0.0
+            if device in device_output_table:
+                for task, name, freq in device_output_table.get(device, []):
+                    try:
+                        group = groups.get_group((task, name))
+                        yield task, name, check_publishing_frequency(group, freq, window)
+                    except KeyError:
+                        yield task, name, 0.0
 
         scheduled_tasks = scheduled_tasks_by_node.get(node.vsn, [])
 
