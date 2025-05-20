@@ -299,13 +299,12 @@ def get_health_records_for_window(nodes, start, end, window):
         groups = df_vsn.groupby(["meta.task", "name"])
 
         def check_publishing_frequency_for_device(device, window):
-            if device in device_output_table:
-                for task, name, freq in device_output_table.get(device, []):
-                    try:
-                        group = groups.get_group((task, name))
-                        yield task, name, check_publishing_frequency(group, freq, window)
-                    except KeyError:
-                        yield task, name, 0.0
+            for task, name, freq in device_output_table.get(device, []):
+                try:
+                    group = groups.get_group((task, name))
+                    yield task, name, check_publishing_frequency(group, freq, window)
+                except KeyError:
+                    yield task, name, 0.0
 
         scheduled_tasks = scheduled_tasks_by_node.get(node.vsn, [])
 
@@ -334,13 +333,14 @@ def get_health_records_for_window(nodes, start, end, window):
         node_healthy = True
 
         for device in node.devices:
-            # the idea here is to translate the publishing frequency into a kind of SLA. here
-            # we're saying that after breaking the series up into window the size of the publishing
-            # frequency, we should see 1 sample per window in 90% of the windows.
-            healthy = check_publishing_sla_for_device(device, window, 0.90)
-            # accumulate full node health
-            node_healthy = node_healthy and healthy
-            add_device_health_check_record(node.vsn, device, healthy)
+            if device in device_output_table:
+                # the idea here is to translate the publishing frequency into a kind of SLA. here
+                # we're saying that after breaking the series up into window the size of the publishing
+                # frequency, we should see 1 sample per window in 90% of the windows.
+                healthy = check_publishing_sla_for_device(device, window, 0.90)
+                # accumulate full node health
+                node_healthy = node_healthy and healthy
+                add_device_health_check_record(node.vsn, device, healthy)
 
         add_node_health_check_record(node.vsn, node_healthy)
 
