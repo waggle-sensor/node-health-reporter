@@ -62,7 +62,6 @@ def load_node_table_item(item):
     for sensor in item["sensors"]:
         devices.add(sensor["name"].lower())
 
-    # TODO add camera stuff for upload checks
     return Node(
         id=item["name"].lower(),
         vsn=item["vsn"].upper(),
