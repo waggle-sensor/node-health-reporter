@@ -14,9 +14,6 @@ from utils import (
     check_publishing_frequency,
 )
 
-#TODO: fix error, https://chatgpt.com/share/682bb9b4-1ddc-8003-b01e-92987d175253
-
-
 # these metrics are coming in inconsistently. we should debug later
 # but to make the health report less red, we'll comment them out.
 # sys.cooling*
