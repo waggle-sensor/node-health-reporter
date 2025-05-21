@@ -14,7 +14,6 @@ from utils import (
     check_publishing_frequency,
 )
 
-
 # these metrics are coming in inconsistently. we should debug later
 # but to make the health report less red, we'll comment them out.
 # sys.cooling*
@@ -68,7 +67,7 @@ sys_from_nxcore = {
     # "sys.gps.mode",
 }
 
-sys_from_dellblade = {
+sys_from_sbcore = {
     "sys.boot_time",
     # "sys.cooling",
     # "sys.cooling_max",
@@ -194,7 +193,7 @@ device_output_table = {
     "nxcore": [("nxcore", name, "120s") for name in sys_from_nxcore],
     "nxagent": [("nxagent", name, "120s") for name in sys_from_nxagent],
     "rpi": [("rpi", name, "120s") for name in sys_from_rpi],
-    "dell": [("dell", name, "60s") for name in sys_from_dellblade],
+    "sbcore": [("sbcore", name, "60s") for name in sys_from_sbcore],
     "bme280": [("wes-iio-bme280", name, "30s") for name in outputs_from_bme],
     "bme680": [("wes-iio-bme680", name, "30s") for name in outputs_from_bme],
     "raingauge": [("wes-raingauge", name, "30s") for name in outputs_from_raingauge],
@@ -279,7 +278,7 @@ def get_health_records_for_window(nodes, start, end, window):
     # NOTE this will not really work for nodes with multiple rpis. we need to rethink this a bit
     # in the future. for now, we want to fix the urgent problem of differentiating most sys metrics.
     df.loc[is_sys & df["meta.host"].str.endswith("rpi"), "meta.task"] = "rpi"
-    df.loc[is_sys & df["meta.host"].str.endswith("sbcore"), "meta.task"] = "dell"
+    df.loc[is_sys & df["meta.host"].str.endswith("sbcore"), "meta.task"] = "sbcore"
 
     vsn_groups = df.groupby(["meta.vsn"])
 
@@ -287,7 +286,7 @@ def get_health_records_for_window(nodes, start, end, window):
 
     for node in nodes:
         try:
-            df_vsn = vsn_groups.get_group(node.vsn)
+            df_vsn = vsn_groups.get_group((node.vsn,))
         except:
             add_node_health_check_record(node.vsn, 0)
             for device in node.devices:
@@ -297,7 +296,7 @@ def get_health_records_for_window(nodes, start, end, window):
         groups = df_vsn.groupby(["meta.task", "name"])
 
         def check_publishing_frequency_for_device(device, window):
-            for task, name, freq in device_output_table[device]:
+            for task, name, freq in device_output_table.get(device, []):
                 try:
                     group = groups.get_group((task, name))
                     yield task, name, check_publishing_frequency(group, freq, window)
@@ -334,6 +333,8 @@ def get_health_records_for_window(nodes, start, end, window):
             # the idea here is to translate the publishing frequency into a kind of SLA. here
             # we're saying that after breaking the series up into window the size of the publishing
             # frequency, we should see 1 sample per window in 90% of the windows.
+            if device not in device_output_table:
+                 continue
             healthy = check_publishing_sla_for_device(device, window, 0.90)
             # accumulate full node health
             node_healthy = node_healthy and healthy

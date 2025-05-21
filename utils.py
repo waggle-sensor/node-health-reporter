@@ -47,35 +47,25 @@ class Node:
 
 
 def load_node_table():
-    r = requests.get("https://api.sagecontinuum.org/production")
+    r = requests.get("https://auth.sagecontinuum.org/api/v-beta/nodes/")
     r.raise_for_status()
     return [load_node_table_item(item) for item in r.json() if item["vsn"] != ""]
 
 
 def load_node_table_item(item):
-    node_type = item["node_type"].lower()
+    node_type = item["type"].lower()
     devices = set()
-    if node_type == "wsn":
-        devices.add("nxcore")
-        devices.add("bme280")
-    if node_type == "dell":
-        devices.add("dell")
-    if item["nx_agent"] is True:
-        devices.add("nxagent")
-    if item["shield"] is True:
-        devices.add("rpi")
-        devices.add("raingauge")
-        devices.add("bme680")
-        devices.add("microphone")
 
-    # add cameras
-    for dir in ["top", "bottom", "left", "right"]:
-        if item[f"{dir}_camera"] not in [None, "", "none"]:
-            devices.add(f"{dir}_camera")
+    # new config
+    #NOTE: all computes and sensors are added, but not all are used in the rollup
+    # since not all have a tests configured in health_and_sanity_metrics.py
+    for compute in item["computes"]:
+        devices.add(compute["name"].lower())
+    for sensor in item["sensors"]:
+        devices.add(sensor["name"].lower())
 
-    # TODO add camera stuff for upload checks
     return Node(
-        id=item["node_id"].lower(),
+        id=item["name"].lower(),
         vsn=item["vsn"].upper(),
         type=node_type,
         devices=devices,
